@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 func main() {
 
@@ -23,5 +26,14 @@ func main() {
 	/*遍历顺序不确定*/
 	for key, value := range m2 {
 		fmt.Printf("key: %s value %s", key, value)
+	}
+
+	/*线程安全*/
+	syncMap := sync.Map{}
+	syncMap.Store("name", "hzb")
+	value, ok := syncMap.Load("name")
+	if ok {
+		/*类型断言，如果值为空将会断言失败，区别于类型转换，编译器不会帮忙检查是否能断言*/
+		fmt.Println(len(value.(string)))
 	}
 }

@@ -6,7 +6,7 @@ func main() {
 	/*闭包：匿名函数 + 上下文*/
 	name := "hzb"
 	f := func() {
-		fmt.Println("My name is %s", name)
+		fmt.Printf("My name is %s", name)
 	}
 	f()
 

@@ -9,12 +9,12 @@ type HandlerBasedOnMap struct {
 	handlers map[string]func(c *Context)
 }
 
-func (h *HandlerBasedOnMap) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	key := h.key(request.Method, request.URL.Path)
+func (h *HandlerBasedOnMap) ServeHTTP(c *Context) {
+	key := h.key(c.R.Method, c.R.URL.Path)
 	if handler, ok := h.handlers[key]; ok {
-		handler(NewContext(writer, request))
+		handler(NewContext(c.W, c.R))
 	} else {
-		writer.WriteHeader(http.StatusNotFound)
+		c.W.WriteHeader(http.StatusNotFound)
 	}
 }
 
@@ -23,7 +23,7 @@ func (h *HandlerBasedOnMap) key(method string, path string) string {
 }
 
 type Handler interface {
-	http.Handler
+	ServeHTTP(c *Context)
 	Routable
 }
 
