@@ -6,7 +6,7 @@ import (
 )
 
 type Routable interface {
-	Route(method string, pattern string, handlerFunc func(ctx *Context))
+	Route(method string, pattern string, handlerFunc handleFunc) error
 }
 
 type Server interface {
@@ -20,8 +20,8 @@ type sdkHttpServer struct {
 	root    Filter
 }
 
-func (s *sdkHttpServer) Route(method, pattern string, handlerFunc func(ctx *Context)) {
-	s.handler.Route(method, pattern, handlerFunc)
+func (s *sdkHttpServer) Route(method, pattern string, handlerFunc handleFunc) error {
+	return s.handler.Route(method, pattern, handlerFunc)
 }
 
 func (s *sdkHttpServer) Start(address string) error {
@@ -33,7 +33,7 @@ func (s *sdkHttpServer) Start(address string) error {
 }
 
 func NewHttpServer(name string, builders ...FilterBuilder) Server {
-	handler := NewHandlerBasedOnMap()
+	handler := NewHandlerBasedOnTree()
 	var root Filter = func(c *Context) {
 		handler.ServeHTTP(c)
 	}
@@ -49,10 +49,14 @@ func NewHttpServer(name string, builders ...FilterBuilder) Server {
 func index(ctx *Context) {
 	fmt.Fprintf(ctx.W, "index!")
 }
+func test(ctx *Context) {
+	fmt.Fprintf(ctx.W, "test!")
+}
 
 func main() {
 	server := NewHttpServer("server")
-	server.Route(http.MethodGet, "/index", index)
+	server.Route(http.MethodGet, "/test", test)
+	server.Route(http.MethodGet, "/*", index)
 	err := server.Start(":8080")
 	if err != nil {
 		panic(err)
