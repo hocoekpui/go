@@ -5,17 +5,17 @@ import (
 	"time"
 )
 
-type handleFunc func(c *Context)
-
 type FilterBuilder func(next Filter) Filter
 
 type Filter func(c *Context)
 
-func MetricsFilterBuilder(next Filter) Filter {
+func MetricFilterBuilder(next Filter) Filter {
 	return func(c *Context) {
-		start := time.Now().Nanosecond()
+		// 执行前的时间
+		startTime := time.Now().UnixNano()
 		next(c)
-		end := time.Now().Nanosecond()
-		fmt.Printf("Run time %d", end-start)
+		// 执行后的时间
+		endTime := time.Now().UnixNano()
+		fmt.Printf("run time: %d \n", endTime-startTime)
 	}
 }
