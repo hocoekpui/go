@@ -9,18 +9,19 @@ func index(c *Context) {
 	_, _ = fmt.Fprintf(c.W, "index")
 }
 
-func match(c *Context) {
-	_, _ = fmt.Fprintf(c.W, "match")
+func wildcard(c *Context) {
+	_, _ = fmt.Fprintf(c.W, "wildcard")
 }
 
-func matchDetail(c *Context) {
-	_, _ = fmt.Fprintf(c.W, "match detail")
+func param(c *Context) {
+	_, _ = fmt.Fprintf(c.W, c.PathParams["param"])
 }
 
 func main() {
 	server := NewCustomerServer(MetricFilterBuilder)
-	server.Route(http.MethodGet, "/index", index)
-	server.Route(http.MethodGet, "/match/detail", matchDetail)
-	server.Route(http.MethodGet, "/match/*", match)
+	_ = server.Route(http.MethodGet, "/index", index)
+	_ = server.Route(http.MethodGet, "/index/*", wildcard)
+	_ = server.Route(http.MethodGet, "/index/param/:param", param)
+
 	server.Start(":8080")
 }

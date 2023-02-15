@@ -3,22 +3,34 @@ package main
 import (
 	"errors"
 	"net/http"
+	"sort"
 	"strings"
 )
 
+var supportMethods = [4]string{
+	http.MethodGet,
+	http.MethodPost,
+	http.MethodPut,
+	http.MethodDelete,
+}
+
+var ErrorInvalidMethod = errors.New("invalid method")
 var ErrorInvalidRouterPattern = errors.New("invalid router pattern")
 
 type HandlerBasedOnTree struct {
-	root *TreeNode
+	forest map[string]*TreeNode
 }
 
 func NewHandlerBasedOnTree() Handler {
-	rootNode := &TreeNode{}
-	return &HandlerBasedOnTree{root: rootNode}
+	forest := make(map[string]*TreeNode, len(supportMethods))
+	for _, method := range supportMethods {
+		forest[method] = NewRootNode(method)
+	}
+	return &HandlerBasedOnTree{forest: forest}
 }
 
 func (h *HandlerBasedOnTree) ServeHTTP(c *Context) {
-	handlerFunc, ok := h.findRouter(h.root, c.R.URL.Path)
+	handlerFunc, ok := h.findRouter(c.R.Method, c.R.URL.Path, c)
 	if ok {
 		handlerFunc(c)
 	} else {
@@ -32,11 +44,14 @@ func (h *HandlerBasedOnTree) Route(method string, path string, handlerFunc handl
 	if err != nil {
 		return err
 	}
-	currentNode := h.root
+	currentNode, ok := h.forest[method]
+	if !ok {
+		return ErrorInvalidMethod
+	}
 	paths := strings.Split(strings.Trim(path, "/"), "/")
 	for index, currentPath := range paths {
-		childNode, ok := h.findMatchChild(currentNode, currentPath)
-		if ok {
+		childNode, ok := h.findMatchChild(currentNode, currentPath, nil)
+		if ok && childNode.nodeType != nodeTypeAny {
 			currentNode = childNode
 		} else {
 			h.createChildNode(currentNode, paths[index:], handlerFunc)
@@ -47,16 +62,20 @@ func (h *HandlerBasedOnTree) Route(method string, path string, handlerFunc handl
 	return nil
 }
 
-func (h *HandlerBasedOnTree) findMatchChild(node *TreeNode, path string) (*TreeNode, bool) {
-	var wildCardNode *TreeNode
+func (h *HandlerBasedOnTree) findMatchChild(node *TreeNode, path string, c *Context) (*TreeNode, bool) {
+	candidates := make([]*TreeNode, 0, 2)
 	for _, childrenNode := range node.children {
-		if childrenNode.path == path && childrenNode.path != "*" {
-			return childrenNode, true
-		} else if childrenNode.path == "*" {
-			wildCardNode = childrenNode
+		if childrenNode.matchFunc(path, c) {
+			candidates = append(candidates, childrenNode)
 		}
 	}
-	return wildCardNode, wildCardNode != nil
+	if len(candidates) == 0 {
+		return nil, false
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].nodeType < candidates[j].nodeType
+	})
+	return candidates[len(candidates)-1], true
 }
 
 func (h *HandlerBasedOnTree) createChildNode(node *TreeNode, paths []string, handlerFunc handlerFunc) {
@@ -69,11 +88,14 @@ func (h *HandlerBasedOnTree) createChildNode(node *TreeNode, paths []string, han
 	currentNode.handlerFunc = handlerFunc
 }
 
-func (h *HandlerBasedOnTree) findRouter(node *TreeNode, path string) (handlerFunc, bool) {
-	currentNode := node
+func (h *HandlerBasedOnTree) findRouter(method string, path string, c *Context) (handlerFunc, bool) {
+	currentNode, ok := h.forest[method]
+	if !ok {
+		return nil, false
+	}
 	paths := strings.Split(strings.Trim(path, "/"), "/")
 	for _, currentPath := range paths {
-		childNode, ok := h.findMatchChild(currentNode, currentPath)
+		childNode, ok := h.findMatchChild(currentNode, currentPath, c)
 		if !ok {
 			return nil, false
 		}

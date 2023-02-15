@@ -7,8 +7,9 @@ import (
 )
 
 type Context struct {
-	W http.ResponseWriter
-	R *http.Request
+	W          http.ResponseWriter
+	R          *http.Request
+	PathParams map[string]string
 }
 
 func (c *Context) ReadJson(data interface{}) error {
@@ -33,5 +34,5 @@ func (c *Context) WriteJson(code int, data interface{}) error {
 }
 
 func NewContext(w http.ResponseWriter, r *http.Request) *Context {
-	return &Context{W: w, R: r}
+	return &Context{W: w, R: r, PathParams: make(map[string]string, 1)}
 }
